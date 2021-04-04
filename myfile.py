@@ -28,38 +28,40 @@ modelTraining = st.beta_container()
 
 
 with siteHeader:
-    st.title('Welcome to the Awesome project!')
-    st.text('In this project I look into ... And I try ... I worked with the dataset from ...')
+    st.title('TECHNOLOGY SALES FORECASTING')
+    st.text('')
 
 with st.beta_expander("DATASET"):
-    st.header('SALES FORECASTING DATASET')
-    st.text('I found this dataset at...  I decided to work with it because ...')
-    sales_data = pd.read_csv('Superstore.csv')
+    st.header('SUPERSTORE DATASET')
+    st.text('dataset is taken from tableau sample dataset, this data contains from year 2014 - 2017')
+    sales_data = pd.read_csv('filtered_Superstore.csv')
     
-    # Category = sales_data['Category'].drop_duplicates()
-    # select_category = st.sidebar.selectbox('Select Category :',Category)
-    technology = sales_data.loc[sales_data['Category'] == 'Furniture']
+    option = sales_data['Category'].unique()
+    select_category = st.sidebar.selectbox('Select Category :',option,0)
+    
+    technology = sales_data.loc[sales_data['Category'] == select_category]
     st.dataframe(technology)
-    cols = ['Row ID', 'Order ID', 'Ship Date', 'Ship Mode', 'Customer ID', 'Customer Name', 'Segment', 'Country', 'City', 'State', 'Postal Code', 'Region', 'Product ID', 'Category', 'Sub-Category', 'Product Name']
-    technology.drop(cols, axis=1, inplace=True)
+    
     technology = technology.sort_values('Order Date')
     technology.isnull().sum()
     technology = technology.groupby('Order Date')['Sales'].sum().reset_index()
     technology['Order Date'] = pd.to_datetime(technology['Order Date'])
     technology.set_index('Order Date', inplace=True)
-    st.dataframe(technology)
+    # st.dataframe(technology)
     y = technology['Sales'].resample('MS').mean()
     y.head()
     plt.figure(figsize=(20,10))
     plt.grid()
     plt.plot(y)
-    plt.title('Technology Sales')
+    plt.title(select_category)
     plt.xlabel('Date')
     plt.ylabel('Sales')
     plt.show()
+    st.write('Total Sales for '+select_category)
     st.pyplot(plt)
     decomposition = sm.tsa.seasonal_decompose(y, model='additive')
     fig = decomposition.plot()
+    st.write('Decomposition Graph')
     st.pyplot(fig)
 
     def print_adf_result(adf_result):
@@ -78,16 +80,11 @@ with st.beta_expander("DATASET"):
 with st.beta_expander("SARIMA MODEL"):
 
     st.header('SARIMA MODEL')
-    st.text('Let\'s take a look into the features I generated.')
+    st.text('we are using sarima model to do the time-series forecasting')
     p = d = q = range(0, 2)
     pdq = list(itertools.product(p, d, q))
     seasonal_pdq = [(x[0], x[1], x[2], 12) for x in list(itertools.product(p, d, q))]
-    st.write('Examples of parameter combinations for Seasonal ARIMA...')
-    st.write('SARIMAX: {} x {}'.format(pdq[1], seasonal_pdq[1]))
-    st.write('SARIMAX: {} x {}'.format(pdq[1], seasonal_pdq[2]))
-    st.write('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[3]))
-    st.write('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[4]))
-
+    
     for param in pdq:
         for param_seasonal in seasonal_pdq:
             try:
@@ -102,6 +99,7 @@ with st.beta_expander("SARIMA MODEL"):
                 continue
 
     sarimax = SARIMAX(y, order=(0,1,1), seasonal_order=(0,1,1,12)).fit()
+    st.write('Model Summary')
     sarimax.summary()
 
     st.pyplot(sarimax.plot_diagnostics(figsize=(20, 10)))
@@ -120,7 +118,7 @@ with st.beta_expander("SARIMA MODEL"):
         ax3 = fig.add_subplot(gs[1,1])
         sns.kdeplot(series, ax=ax3)
         ax3.set_title('density')
-        
+        st.write('Residual , ACF & Density')
         st.pyplot(plt,True)
         
     check_residuals(residuals)
@@ -135,8 +133,9 @@ with st.beta_expander("SARIMA MODEL"):
                     pred_ci.iloc[:, 0],
                     pred_ci.iloc[:, 1], color='k', alpha=0.2)
     ax.set_xlabel('Date')
-    ax.set_ylabel('Technology Sales')
+    ax.set_ylabel(select_category)
     plt.legend()
+    st.write('Comparison forcast data and observed data with SARIMA model')
     st.pyplot(plt,True)
 
     y_forecasted = pred.predicted_mean
@@ -158,109 +157,7 @@ with st.beta_expander("SARIMA MODEL"):
                     sarimax_forecast_conf_int.iloc[:, 1], color='k', alpha=.2)
 
     plt.legend()
+    st.write('Forecast sales for future years')
     st.pyplot(plt,True)
 
-
-# with st.beta_expander("LSTM MODEL"):
-#     num_epochs = 100
-#     split_ratio = 0.70
-#     batch_size = 2
-#     window_size = 2
-#     _step = 2
-
-#     split_data = round(len(y)*split_ratio)
-#     train_data = y[:split_data]
-#     test_data = y[split_data:]
-#     train_time = train_data.index
-#     test_time = test_data.index
-#     st.write("train_data_shape")
-#     st.write(train_data.shape)
-#     st.write("test_data_shape")
-#     st.write(test_data.shape)
-
-#     scaler = StandardScaler().fit(train_data.values.reshape(-1,1))
-#     scaler_train_data = scaler.transform(train_data.values.reshape(-1,1))
-#     scaler_test_data = scaler.transform(test_data.values.reshape(-1,1))
-#     st.write(f"scaler_train_data shape : {scaler_train_data.shape}")
-#     st.write(f"scaler_test_data shape : {scaler_test_data.shape}")
-
-#     #Data sequencing
-#     trainX ,trainY =  data_module.univariate_multi_step(scaler_train_data,window_size,n_step)
-#     testX , testY = data_module.univariate_multi_step(scaler_test_data,window_size,n_step)
-
-#     st.write(f"trainX shape:{trainX.shape} trainY shape:{trainY.shape}")
-#     st.write(f"testX shape:{testX.shape} testX shape:{testY.shape}")
-
-#     def key_assign(trainingX,testingX,trainingY,testingY):
-#         """ 
-#         Use to assign  the key to create the train_data_dict and test_data_dict   
-#         Arguments:
-#         trainingX -- feature for traning data 
-#         testingX -- feature for testing data
-#         trainingY -- label for traning data
-#         testingY -- label for testing data   
-#         Returns: 
-#         train_data_dict -- dictionary of trainingX and trainingY
-#         test_data_dict -- dictionary of testingX and testingY
-#         """    
-#         # Create a dictionary that can store the train set feature and label
-#         train_data_dict = {"train_data_x_feature" : trainingX, "train_data_y_label" : trainingY}
-        
-#         # Create a dictionary that can store the test set feature and label
-#         test_data_dict  = {"test_data_x_feature" : testingX , "test_data_y_label" : testingY }
-
-#         return train_data_dict , test_data_dict
-
-#     train_data_dictionary , test_data_dictionary = key_assign(trainingX = trainX,
-#                                     testingX = testX,
-#                                     trainingY = trainY,
-#                                     testingY = testY)
-
-#     def key_assign(trainingX,testingX,trainingY,testingY):
-#         """ 
-#         Use to assign  the key to create the train_data_dict and test_data_dict   
-#         Arguments:
-#         trainingX -- feature for traning data 
-#         testingX -- feature for testing data
-#         trainingY -- label for traning data
-#         testingY -- label for testing data   
-#         Returns: 
-#         train_data_dict -- dictionary of trainingX and trainingY
-#         test_data_dict -- dictionary of testingX and testingY
-#         """    
-#         # Create a dictionary that can store the train set feature and label
-#         train_data_dict = {"train_data_x_feature" : trainingX, "train_data_y_label" : trainingY}
-        
-#         # Create a dictionary that can store the test set feature and label
-#         test_data_dict  = {"test_data_x_feature" : testingX , "test_data_y_label" : testingY }
-
-#         return train_data_dict , test_data_dict
-
-#     train_data_dictionary , test_data_dictionary = key_assign(trainingX = trainX,
-#                                     testingX = testX,
-#                                     trainingY = trainY,
-#                                     testingY = testY)
-
-#     def sanity_check(data_1,data_2):
-#         """ 
-#         Print the shape of data_1 and data_2    
-#         Arguments:
-#         data_1 -- (dict) type of data
-#         data_2 -- (dict) type of data 
-#         """
-#         for key_1 in data_1:
-#             print(key_1 +" shape : " + str(data_1[key_1].shape))
-#         for key_2 in data_2:
-#             print(key_2 +" shape : " + str(data_2[key_2].shape))
-
-#     sanity_check(train_data_dictionary,test_data_dictionary)
-
-
-
-
-
-    
-with modelTraining:
-    st.header('Model training')
-    st.text('In this section you can select the hyperparameters!')
 
